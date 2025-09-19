@@ -20,7 +20,7 @@ from database import *
 df = pd.DataFrame(get_data_frame(), columns=['filepath', 'age'])
 
 transform = T.Compose([
-    T.Resize((128,128)),   # you can change to (224,224)
+    T.Resize((128,128)),   
     T.RandomHorizontalFlip(),
     T.ToTensor(),
 ])
@@ -43,19 +43,22 @@ criterion = nn.L1Loss()   # MAE is better for age
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # Training loop
-for epoch in range(10):
+for epoch in range(100):
     model.train()
     total_loss = 0
+    bucket_correct_train = 0
+    bucket_total_train = 0
     for imgs, ages in train_loader:
         imgs, ages = imgs.to(device), ages.to(device).unsqueeze(1)
-
         optimizer.zero_grad()
         preds = model(imgs)
         loss = criterion(preds, ages)
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * imgs.size(0)
-
+        bucket_correct_train += (preds.int() == ages.int()).sum().item()
+        bucket_total_train += ages.size(0)
+    bucket_accuracy_train = bucket_correct_train / bucket_total_train
     train_loss = total_loss / len(train_loader.dataset)
 
     # Validation
@@ -76,4 +79,9 @@ for epoch in range(10):
 
     print(f"Epoch {epoch+1}: train_loss={train_loss:.3f}, val_loss={val_loss:.3f}")
     bucket_accuracy = bucket_correct / bucket_total if bucket_total > 0 else 0
+    #Compute accuracies
+    print(f" Testing bucket accuracy (same age bucket): {bucket_accuracy_train*100:.2f}%")
     print(f" Validation bucket accuracy (same age bucket): {bucket_accuracy*100:.2f}%")
+    # Save model at the end of each epoch
+    os.makedirs("models", exist_ok=True)
+    torch.save(model.state_dict(), f"models/age_cnn_epoch_{epoch+1}.pth")
