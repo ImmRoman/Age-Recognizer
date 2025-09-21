@@ -56,16 +56,14 @@ def get_age_bucket(age):
             return 2
         case a if 15<=a<=21:
             return 3
-        case a if 15<=a<=21:
-            return 4
         case a if 22<=a<=37:
-            return 5
+            return 4
         case a if 38<=a<=47:
-            return 6
+            return 5
         case a if 48<=a<=59:
-            return 7
+            return 6
         case a if a>=60:
-            return 8
+            return 7
 
 
 
