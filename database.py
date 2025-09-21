@@ -11,6 +11,8 @@ from torch.utils.data import DataLoader, random_split
 import torchvision.transforms as T
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split,Dataset
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
 
 from Cnn import *
 
@@ -62,5 +64,22 @@ def get_data_frame():
                     continue
     return data
 
-
+def plot_confusion_matrix(model, dataloader, device):
+    all_true = []
+    all_pred = []
+    model.eval()
+    with torch.no_grad():
+        for imgs, ages in dataloader:
+            imgs, ages = imgs.to(device), ages.to(device).long()
+            preds = model(imgs)
+            pred_classes = preds.argmax(dim=1)
+            all_true.extend(ages.cpu().numpy())
+            all_pred.extend(pred_classes.cpu().numpy())
+    cm = confusion_matrix(all_true, all_pred)
+    plt.figure(figsize=(10,8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title('Confusion Matrix (Validation)')
+    plt.show()
 
