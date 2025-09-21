@@ -35,7 +35,8 @@ class AgeDataset(Dataset):
         img_path = self.df.loc[idx, "filepath"]
         age = self.df.loc[idx, "age"]
 
-        img = Image.open(img_path).convert("RGB")
+        #img = Image.open(img_path).convert("RGB")
+        img = Image.open(img_path).convert("L")
 
         if self.transform:
             img = self.transform(img)

@@ -16,34 +16,34 @@ from torch.utils.data import DataLoader, random_split,Dataset
 
 class AgeCNN(nn.Module):
     def __init__(self):
-        super().__init__()
-        self.conv1 = nn.Conv2d(3,32,3)
-        self.conv2 = nn.Conv2d(32, 64, 3)
-        self.conv3 = nn.Conv2d(64,128,3)
-        self.fc1 = nn.Linear(25088,256)
-        self.fc2 = nn.Linear(256,8)
-        self.fc3 = nn.Linear(8,1)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.dropout = nn.Dropout(0.2)
-        self.dropout_fc = nn.Dropout(0.5)
+        super(AgeCNN, self).__init__()
+        # Input: grayscale (1 channel), 200x200
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3)
+        self.pool = nn.AvgPool2d(2, 2)   # same as AveragePooling2D
 
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3)
+        self.conv4 = nn.Conv2d(128, 256, kernel_size=3)
 
+        # Global Average Pooling
+        self.global_pool = nn.AdaptiveAvgPool2d((1, 1))  # like GlobalAveragePooling2D
+
+        # Dense layers
+        self.fc1 = nn.Linear(256, 132)
+        self.fc2 = nn.Linear(132, 9)  
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
-        x = self.dropout(x)
         x = self.pool(F.relu(self.conv2(x)))
-        x = self.dropout(x)
         x = self.pool(F.relu(self.conv3(x)))
-        x = self.dropout(x)
-        x = torch.flatten(x, 1) # flatten all dimensions except batch
+        x = self.pool(F.relu(self.conv4(x)))
+
+        x = self.global_pool(x)        
+        x = torch.flatten(x, 1)       
+
         x = F.relu(self.fc1(x))
-        x = self.dropout_fc(x)
-        x = F.relu(self.fc2(x))
-        x = self.dropout_fc(x)
-        x = self.fc3(x)
+        x = self.fc2(x)                
         return x
-    
 
 
 def get_age_bucket(age):
