@@ -18,7 +18,7 @@ from database import *
 
 # Create a Pandas DataFrame
 df = pd.DataFrame(get_data_frame(), columns=['filepath', 'age'])
-rotations_iterator = [-40,-20,0,20,40,360,-40,-20,0,20,40]
+rotations_iterator = [-40,-20,0,20,40,360,-40,-20,20,40]
 transform = T.Compose([
     T.Resize((200,200)),   
     T.RandomHorizontalFlip(),

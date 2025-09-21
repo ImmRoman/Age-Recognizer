@@ -30,7 +30,7 @@ class AgeCNN(nn.Module):
 
         # Dense layers
         self.fc1 = nn.Linear(256, 132)
-        self.fc2 = nn.Linear(132, 9)  
+        self.fc2 = nn.Linear(132, 8)  
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
