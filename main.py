@@ -41,7 +41,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = AgeCNN().to(device)
 # UTKFace approximate bucket distribution (example, adjust if you have exact counts):
 # [0-3]: 6000, [4-7]: 5000, [8-14]: 7000, [15-21]: 8000, [22-37]: 12000, [38-47]: 6000, [48-59]: 4000, [60+]: 3000
-bucket_counts = torch.tensor([6000, 5000, 7000, 8000, 12000, 6000, 4000, 3000, 3000], dtype=torch.float)
+bucket_counts = torch.tensor([6000, 5000, 7000, 8000, 12000, 6000, 4000, 3000], dtype=torch.float)
 bucket_weights = bucket_counts.sum() / (len(bucket_counts) * bucket_counts)
 bucket_weights = bucket_weights.to(device)
 criterion = nn.CrossEntropyLoss(weight=bucket_weights)
