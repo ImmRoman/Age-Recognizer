@@ -16,10 +16,7 @@ import seaborn as sns
 
 from Cnn import *
 
-image_dir = "dataset"
 
-# List all image files
-filenames = os.listdir(image_dir)
 
 class AgeDataset(Dataset):
     def __init__(self, dataframe, transform=None):
@@ -45,17 +42,22 @@ class AgeDataset(Dataset):
         else:
             img = T.ToTensor()(img)
 
-        return img, torch.tensor(age, dtype=torch.float32)
+        return img, torch.tensor(age, dtype=torch.long)
 
 
-def get_data_frame():
+def get_data_frame(image_dir):
     data = []
+    contatore = 0
+    filenames = os.listdir(image_dir)
     for filename in filenames:
-        # Ensure it's a valid image file
+        contatore += 1
+        # if(contatore % 5 != 0):
+        #     continue
+        #Ensure it's a valid image file
         if filename.endswith('.jpg'):
             # Split the filename by underscore to get the age
             parts = filename.split('_')
-            if len(parts) > 0:
+            if len(parts) > 0 and len(parts)== 2:
                 try:
                     age = int(parts[0])
                     data.append([os.path.join(image_dir, filename), get_age_bucket(age)])

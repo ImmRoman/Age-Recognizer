@@ -1,2 +1,4 @@
 /dataset
 /models
+/cropped_dataset
+/__pycache__
