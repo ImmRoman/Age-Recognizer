@@ -15,14 +15,19 @@ from torch.utils.data import DataLoader, random_split,Dataset
 
 from Cnn import *
 from database import *
-
+top_accuracy = 0
 # Create a Pandas DataFrame
-df = pd.DataFrame(get_data_frame("cropped_dataset"), columns=['filepath', 'age'])
+df = pd.DataFrame(get_data_frame("validation_cropped_faces"), columns=['filepath', 'age'])
 # df_validation = pd.DataFrame(get_data_frame("validation_cropped_faces"), columns=['filepath', 'age'])
 rotations_iterator = [0]
 transform = T.Compose([
     # T.Resize((120,120)),   
-    # T.RandomHorizontalFlip(),,
+    T.RandomHorizontalFlip(),
+    T.ColorJitter(brightness=0.2, 
+                  contrast=0.2, 
+                  saturation=0.2, 
+                  hue=0.02), 
+    T.RandomRotation(degrees=10),
     T.ToTensor(),
 ])
 
@@ -35,10 +40,10 @@ n_train = int(0.8 * len(dataset))
 n_val = len(dataset) - n_train
 train_ds, val_ds = random_split(dataset, [n_train, n_val])
 
-train_loader = DataLoader(train_ds, batch_size = 2048, shuffle=True)
-val_loader = DataLoader(val_ds, batch_size = 64)
+train_loader = DataLoader(train_ds, batch_size = 4086, shuffle=True)
+# val_loader = DataLoader(val_ds, batch_size = 64)
 
-# val_loader = DataLoader(validation, batch_size = 256)
+val_loader = DataLoader(val_ds, batch_size = 512)
 
 # Model, loss, optimizer
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -106,19 +111,22 @@ for epoch in range(1200):
             bucket_total_validation += ages.size(0)
 
     val_loss /= len(val_loader.dataset)
-
+    
    
     
     print(f"Epoch {epoch+1}: train_loss={train_loss:.3f}, val_loss={val_loss:.3f}, lr={lr}")
     bucket_accuracy_validation = bucket_correct_validation / bucket_total_validation if bucket_total_validation > 0 else 0
+    if bucket_accuracy_validation > top_accuracy:
+         torch.save(model.state_dict(), f"models/age_cnn_best_model.pth")
+         top_accuracy = bucket_accuracy_validation
     #Compute accuracies
     print(f" Testing bucket accuracy : {bucket_accuracy_train*100:.2f}%")
     print(f" Validation bucket accuracy : {bucket_accuracy_validation*100:.2f}%")
 
-    if ((epoch + 1) % 80 == 0):
+    if ((epoch + 1) % 30 == 0):
         # Save model at the end of each epoch
         os.makedirs("models", exist_ok=True)
         torch.save(model.state_dict(), f"models/age_cnn_epoch_{epoch+1}.pth")
-        plot_confusion_matrix(model,val_loader , device)
+        # plot_confusion_matrix(model,val_loader , device)
 
 

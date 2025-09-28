@@ -2,3 +2,4 @@
 /models
 /cropped_dataset
 /__pycache__
+/validation_cropped_faces

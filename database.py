@@ -57,7 +57,7 @@ def get_data_frame(image_dir):
         if filename.endswith('.jpg'):
             # Split the filename by underscore to get the age
             parts = filename.split('_')
-            if len(parts) > 0 and len(parts)== 2:
+            if len(parts) > 0 and len(parts) == 2:
                 try:
                     age = int(parts[0])
                     data.append([os.path.join(image_dir, filename), get_age_bucket(age)])

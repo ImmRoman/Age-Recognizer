@@ -29,9 +29,8 @@ class AgeCNN(nn.Module):
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))  # like GlobalAveragePooling2D
 
         # Dense layers
-        self.fc1 = nn.Linear(256, 128)
-        self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 8)  
+        self.fc1 = nn.Linear(256, 156)
+        self.fc2 = nn.Linear(156, 8)
 
 
     def forward(self, x):
@@ -44,8 +43,7 @@ class AgeCNN(nn.Module):
         x = torch.flatten(x, 1)       
 
         x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)               
+        x = self.fc2(x)
         return x
 
 
