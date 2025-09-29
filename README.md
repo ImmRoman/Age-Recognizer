@@ -5,7 +5,7 @@
 - Qui viene importato direttamente il modello `mobilenet_v3_large`.
 
 ## 🗄️ Dataset
-- Implemnta il **Database** e le funzioni affine.
+- Implementa il **Database** e le funzioni affini.
 
 ## 🧠 Cnn
 - Contiene il modello **AgeCNN** con cui sperimento custom cnn.
