@@ -34,9 +34,14 @@ class AgeDataset(Dataset):
         img_path = self.df.loc[idx, "filepath"]
         age = self.df.loc[idx, "age"]
 
-        #img = Image.open(img_path).convert("RGB")
-        img = Image.open(img_path).convert("L")
+        img = Image.open(img_path).convert("RGB")
+        #Fatto per i dataloader di immagini non nel dataset
+        img = img.resize(size=(200,200))
+        #converte da BGR a RGB coi db salvati da opencv 
+        # r, g, b = img.split()
+        # img_rgb = Image.merge("RGB", (b, g, r))
 
+        # img = Image.open(img_path).convert("L") #grayscale
         if self.transform:
             img = self.transform(img)
         else:
@@ -57,7 +62,7 @@ def get_data_frame(image_dir):
         if filename.endswith('.jpg'):
             # Split the filename by underscore to get the age
             parts = filename.split('_')
-            if len(parts) > 0 and len(parts) == 2:
+            if len(parts) > 0:
                 try:
                     age = int(parts[0])
                     data.append([os.path.join(image_dir, filename), get_age_bucket(age)])
@@ -77,11 +82,20 @@ def plot_confusion_matrix(model, dataloader, device):
             pred_classes = preds.argmax(dim=1)
             all_true.extend(ages.cpu().numpy())
             all_pred.extend(pred_classes.cpu().numpy())
-    cm = confusion_matrix(all_true, all_pred)
+
+    cm = confusion_matrix(all_true, all_pred,labels=list(range(8)))
     plt.figure(figsize=(10,8))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
     plt.xlabel('Predicted')
     plt.ylabel('True')
+
+    total_correct = np.trace(cm)
+    total_samples = np.sum(cm)
+    accuracy = total_correct / total_samples * 100
+    plt.text(
+    0.5, -0.1, f'Total Accuracy: {accuracy:.2f}%', 
+    fontsize=12, ha='center', va='top', transform=plt.gca().transAxes
+    )
     plt.title('Confusion Matrix (Validation)')
     plt.show()
 

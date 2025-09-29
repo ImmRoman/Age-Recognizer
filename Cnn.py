@@ -66,6 +66,18 @@ def get_age_bucket(age):
             return 6
         case a if a>=60:
             return 7
+        
+def get_age_range(bucket: int) -> str:
+    match bucket:
+        case 0: return "0-3"
+        case 1: return "4-7"
+        case 2: return "8-14"
+        case 3: return "15-21"
+        case 4: return "22-37"
+        case 5: return "38-47"
+        case 6: return "48-59"
+        case 7: return "60+"
+        case _: return "Unknown"
 
 
 
