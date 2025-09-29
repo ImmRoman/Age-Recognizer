@@ -1,6 +1,19 @@
-Main contiene i loop di trainig. Il modello mobilenet_v3_large viene importato direttamente qui
-Dataset gestisce le classi di Database e Dataloader
-Cnn ha il mio modello custom che ha raggiunto il 72% di validation_accuracy
+# Struttura del progetto
 
-Test_on_folder è un script per testare un modello su una cartella di foto e ottenerne la matrice di confusione
-Test_on_single_pictures è un script per testare un modello su una singola foto
+## 📌 Main
+- Contiene i loop di training.
+- Qui viene importato direttamente il modello `mobilenet_v3_large`.
+
+## 🗄️ Dataset
+- Implemnta il **Database** e le funzioni affine.
+
+## 🧠 Cnn
+- Contiene il modello **AgeCNN** con cui sperimento custom cnn.
+- Contiente la funzione per definire le classi di riconoscimenti.
+
+## 📂 Test_on_folder
+- Script per testare un modello su una **cartella di immagini**.
+- Genera la **matrice di confusione** per valutare le prestazioni.
+
+## 🖼️ Test_on_single_pictures
+- Script per testare un modello su una **singola immagine**.
