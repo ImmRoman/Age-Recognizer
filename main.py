@@ -2,6 +2,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,21 +15,22 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, random_split,Dataset
 import torchvision.models as models
 
+DATABASE_PATH = "cropped_output"
 
 from Cnn import *
 from database import *
 top_accuracy = 0
 if __name__ == "__main__":
     # Load MobileNetV3-Large pretrained on ImageNet
-    mobilenet_v3_large = models.mobilenet_v3_large(pretrained = True)
-    mobilenet_v3_large.classifier[3] = nn.Linear(in_features=1280, out_features=8)
+    # mobilenet_v3_large = models.mobilenet_v3_large(pretrained = True)
+    # mobilenet_v3_large.classifier[3] = nn.Linear(in_features=1280, out_features=8)
 
     # Load MobileNetV3-Small pretrained on ImageNet
     # mobilenet_v3_small = models.mobilenet_v3_small(pretrained=True)
+
+
     # Create a Pandas DataFrame
-    df = pd.DataFrame(get_data_frame("cropped_dataset"), columns=['filepath', 'age'])
-    # df_validation = pd.DataFrame(get_data_frame("validation_cropped_faces"), columns=['filepath', 'age'])
-    rotations_iterator = [0]
+    df = pd.DataFrame(get_data_frame(DATABASE_PATH), columns=['filepath', 'age'])
     transform = T.Compose([
         T.Resize(224),
         T.ToTensor(),
@@ -44,17 +46,20 @@ if __name__ == "__main__":
     n_val = len(dataset) - n_train
     train_ds, val_ds = random_split(dataset, [n_train, n_val])
 
-    train_loader = DataLoader(train_ds, batch_size = 256, shuffle=True)
+    train_loader = DataLoader(train_ds, batch_size = 64, shuffle=True)
     # val_loader = DataLoader(val_ds, batch_size = 64)
 
-    val_loader = DataLoader(val_ds, batch_size = 64)
+    val_loader = DataLoader(val_ds, batch_size = 1)
 
     # Model, loss, optimizer
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device == "cpu":
         print("Using cpu to train")
         exit(-1)
-    model = mobilenet_v3_large.to(device)
+    
+    istanza = AgeCNN()
+    model = istanza.to(device)
+
     # UTKFace approximate bucket distribution (example, adjust if you have exact counts):
     # [0-3]: 6000, [4-7]: 5000, [8-14]: 7000, [15-21]: 8000, [22-37]: 12000, [38-47]: 6000, [48-59]: 4000, [60+]: 3000
     # bucket_counts = torch.tensor([6000, 5000, 7000, 8000, 12000, 6000, 4000, 3000], dtype=torch.float)
@@ -72,7 +77,7 @@ if __name__ == "__main__":
     print("====   INIZIO TRAINING   ====")
     print("="*29)
     # Training loop
-    for epoch in range(120):
+    for epoch in range(1200):
         model.train()
         total_loss = 0
         bucket_correct_train = 0
@@ -130,7 +135,7 @@ if __name__ == "__main__":
         if ((epoch + 10) % 30 == 0):
             # Save model at the end of each epoch
             os.makedirs("models", exist_ok=True)
-            torch.save(model.state_dict(), f"models/age_cnn_epoch_{epoch+1}.pth")
+            # torch.save(model.state_dict(), f"models/age_cnn_epoch_{epoch+1}.pth")
             plot_confusion_matrix(model,val_loader , device)
 
 

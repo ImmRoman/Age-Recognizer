@@ -17,7 +17,6 @@ import seaborn as sns
 from Cnn import *
 
 
-
 class AgeDataset(Dataset):
     def __init__(self, dataframe, transform=None):
         """
@@ -36,7 +35,7 @@ class AgeDataset(Dataset):
 
         img = Image.open(img_path).convert("RGB")
         #Fatto per i dataloader di immagini non nel dataset
-        img = img.resize(size=(200,200))
+        img = img.resize(size=(224,224))
         #converte da BGR a RGB coi db salvati da opencv 
         # r, g, b = img.split()
         # img_rgb = Image.merge("RGB", (b, g, r))
@@ -59,7 +58,7 @@ def get_data_frame(image_dir):
         # if(contatore % 5 != 0):
         #     continue
         #Ensure it's a valid image file
-        if filename.endswith('.jpg'):
+        if filename.endswith('.png') or filename.endswith('.jpg'):
             # Split the filename by underscore to get the age
             parts = filename.split('_')
             if len(parts) > 0:

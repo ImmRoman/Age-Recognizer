@@ -18,7 +18,7 @@ class AgeCNN(nn.Module):
     def __init__(self):
         super(AgeCNN, self).__init__()
         # Input: grayscale (1 channel), 200x200
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3)
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3)
         self.pool = nn.AvgPool2d(2, 2)   # same as AveragePooling2D
 
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3)
@@ -29,8 +29,9 @@ class AgeCNN(nn.Module):
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))  # like GlobalAveragePooling2D
 
         # Dense layers
-        self.fc1 = nn.Linear(256, 156)
-        self.fc2 = nn.Linear(156, 8)
+        self.fc1 = nn.Linear(256, 256)
+        self.fc2 = nn.Linear(256, 156)
+        self.fc3 = nn.Linear(156, 8)
 
 
     def forward(self, x):
@@ -43,7 +44,8 @@ class AgeCNN(nn.Module):
         x = torch.flatten(x, 1)       
 
         x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
         return x
 
 
