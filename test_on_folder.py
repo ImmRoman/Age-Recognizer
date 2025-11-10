@@ -4,8 +4,9 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split,Dataset
 from Cnn import *
 from database import *
+import torch
 
-FOLDER_PATH = "validation_cropped_faces"
+FOLDER_PATH = "cropped_output"
 MODEL_PATH = "models\\age_cnn_best_model.pth"  
 
 if __name__ == "__main__":
@@ -14,8 +15,8 @@ if __name__ == "__main__":
     mobilenet_v3_large = models.mobilenet_v3_large(pretrained=True)
     mobilenet_v3_large.classifier[3] = nn.Linear(in_features=1280, out_features=8)
     model = mobilenet_v3_large.to(device)
-    model = AgeCNN()
-    model = model.to(device)
+    # model = AgeCNN()
+    # model = model.to(device)
 
     model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 
@@ -26,6 +27,9 @@ if __name__ == "__main__":
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
     dataset = AgeDataset(df, transform=transform)
+    # Load the dataset
+    dataset = torch.load("validation_dataset.pth",weights_only=False)
+
     DL = DataLoader(dataset, batch_size = 512)
 
 

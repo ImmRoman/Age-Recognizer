@@ -1,4 +1,6 @@
 /dataset
 /cropped_dataset
 /__pycache__
+/cropped_faces
 /validation_cropped_faces
+/cropped_output

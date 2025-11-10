@@ -39,7 +39,7 @@ def open_camera():
     if not cap.isOpened():
         print("Error: Could not open camera.")
         return
-    with mp_face_mesh.FaceMesh(static_image_mode=True,max_num_faces=1,refine_landmarks=True,min_detection_confidence=0.5) as face_mesh:
+    with mp_face_mesh.FaceMesh(static_image_mode=True,max_num_faces=3,refine_landmarks=True,min_detection_confidence=0.5) as face_mesh:
         while True:
             # Read a frame from the camera
             ret, frame = cap.read()
