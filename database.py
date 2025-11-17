@@ -17,12 +17,8 @@ import seaborn as sns
 from Cnn import *
 
 
-class AgeDataset(Dataset):
+class GenderDataset(Dataset):
     def __init__(self, dataframe, transform=None):
-        """
-        dataframe: pd.DataFrame with columns [filepath, age]
-        transform: torchvision transforms to apply
-        """
         self.df = dataframe.reset_index(drop=True)
         self.transform = transform
 
@@ -31,43 +27,42 @@ class AgeDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = self.df.loc[idx, "filepath"]
-        age = self.df.loc[idx, "age"]
+        gender = self.df.loc[idx, "gender"]   # 0 = male, 1 = female
 
         img = Image.open(img_path).convert("RGB")
-        #Fatto per i dataloader di immagini non nel dataset
         img = img.resize(size=(224,224))
-        #converte da BGR a RGB coi db salvati da opencv 
-        # r, g, b = img.split()
-        # img_rgb = Image.merge("RGB", (b, g, r))
 
-        # img = Image.open(img_path).convert("L") #grayscale
         if self.transform:
             img = self.transform(img)
         else:
             img = T.ToTensor()(img)
 
-        return img, torch.tensor(age, dtype=torch.long)
+        return img, torch.tensor(gender, dtype=torch.long)
 
 
 def get_data_frame(image_dir):
     data = []
-    contatore = 0
     filenames = os.listdir(image_dir)
+
     for filename in filenames:
-        contatore += 1
-        # if(contatore % 5 != 0):
-        #     continue
-        #Ensure it's a valid image file
         if filename.endswith('.png') or filename.endswith('.jpg'):
-            # Split the filename by underscore to get the age
             parts = filename.split('_')
-            if len(parts) > 0:
+
+            # UTKFace format requires at least 4 parts
+            if len(parts) >= 4:
                 try:
-                    age = int(parts[0])
-                    data.append([os.path.join(image_dir, filename), get_age_bucket(age)])
-                except ValueError:
-                    # Skip files where the age part is not a number
+                    gender = int(parts[1])
+                    if gender not in (0,1):
+                        continue
+                except:
                     continue
+
+                data.append([
+                    os.path.join(image_dir, filename),
+                    gender
+                ])
+
+    # Return as list of [filepath, gender]
     return data
 
 def plot_confusion_matrix(model, dataloader, device):
@@ -82,7 +77,7 @@ def plot_confusion_matrix(model, dataloader, device):
             all_true.extend(ages.cpu().numpy())
             all_pred.extend(pred_classes.cpu().numpy())
 
-    cm = confusion_matrix(all_true, all_pred,labels=list(range(8)))
+    cm = confusion_matrix(all_true, all_pred, labels=list(range(2)))
     plt.figure(figsize=(10,8))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
     plt.xlabel('Predicted')
