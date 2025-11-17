@@ -22,8 +22,8 @@ from database import *
 top_accuracy = 0
 if __name__ == "__main__":
     # Load MobileNetV3-Large pretrained on ImageNet
-    # mobilenet_v3_large = models.mobilenet_v3_large(pretrained = True)
-    # mobilenet_v3_large.classifier[3] = nn.Linear(in_features=1280, out_features=8)
+    mobilenet_v3_large = models.mobilenet_v3_large(pretrained = True)
+    mobilenet_v3_large.classifier[3] = nn.Linear(in_features=1280, out_features=8)
 
     # Load MobileNetV3-Small pretrained on ImageNet
     # mobilenet_v3_small = models.mobilenet_v3_small(pretrained=True)
@@ -33,6 +33,8 @@ if __name__ == "__main__":
     df = pd.DataFrame(get_data_frame(DATABASE_PATH), columns=['filepath', 'age'])
     transform = T.Compose([
         T.Resize(224),
+        T.RandomHorizontalFlip(),
+        T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
         T.ToTensor(),
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -46,31 +48,49 @@ if __name__ == "__main__":
     n_val = len(dataset) - n_train
     train_ds, val_ds = random_split(dataset, [n_train, n_val])
 
-    train_loader = DataLoader(train_ds, batch_size = 64, shuffle=True)
+    train_loader = DataLoader(train_ds, batch_size = 256, shuffle=True)
+    # torch.save(train_loader.dataset, 'train_dataset.pth')
     # val_loader = DataLoader(val_ds, batch_size = 64)
 
-    val_loader = DataLoader(val_ds, batch_size = 1)
-
+    val_loader = DataLoader(val_ds, batch_size = 64)
+    # torch.save(val_loader.dataset, 'validation_dataset.pth')
+    
     # Model, loss, optimizer
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device == "cpu":
         print("Using cpu to train")
         exit(-1)
     
-    istanza = AgeCNN()
-    model = istanza.to(device)
+    model = mobilenet_v3_large.to(device)
+    # model = AgeCNN().to(device)
 
-    # UTKFace approximate bucket distribution (example, adjust if you have exact counts):
-    # [0-3]: 6000, [4-7]: 5000, [8-14]: 7000, [15-21]: 8000, [22-37]: 12000, [38-47]: 6000, [48-59]: 4000, [60+]: 3000
-    # bucket_counts = torch.tensor([6000, 5000, 7000, 8000, 12000, 6000, 4000, 3000], dtype=torch.float)
-    # bucket_weights = bucket_counts.sum() / (len(bucket_counts) * bucket_counts)
-    # bucket_weights = bucket_weights.to(device)
-    # criterion = nn.CrossEntropyLoss(weight=bucket_weights)
-    criterion = nn.CrossEntropyLoss()
-
+    bucket_counts = torch.tensor([3765, 1419, 1934, 2508, 12725, 3274, 3701, 4140], dtype=torch.float)
+    bucket_weights = bucket_counts.sum() / (len(bucket_counts) * bucket_counts)
+    bucket_weights = bucket_weights.to(device)
+    criterion = nn.CrossEntropyLoss(weight=bucket_weights)
+    # criterion = nn.CrossEntropyLoss()
+    
     lr = 0.001  # Initial learning rate
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
+    # import matplotlib.pyplot as plt
+    # def plot_class_distribution(df):
+    #     class_counts = df['age'].value_counts().sort_index()
+    #     plt.figure(figsize=(10, 6))
+    #     ax = class_counts.plot(kind='bar')
+    #     plt.title('Distribution of Age Classes')
+    #     plt.xlabel('Age Class')
+    #     plt.ylabel('Count')
+        
+    #     # Add value labels on top of each bar
+    #     for i, v in enumerate(class_counts):
+    #         ax.text(i, v, str(v), ha='center', va='bottom')
+        
+    #     plt.xticks(rotation=0)
+    #     plt.grid(axis='y')
+    #     plt.show()
+
+    # plot_class_distribution(df)
 
 
     print("="*29)
@@ -123,19 +143,22 @@ if __name__ == "__main__":
         
     
         
-        print(f"Epoch {epoch+1}: train_loss={train_loss:.3f}, val_loss={val_loss:.3f}, lr={lr}")
-        bucket_accuracy_validation = bucket_correct_validation / bucket_total_validation if bucket_total_validation > 0 else 0
-        if bucket_accuracy_validation > top_accuracy:
-            torch.save(model.state_dict(), f"models/age_cnn_best_model.pth")
-            top_accuracy = bucket_accuracy_validation
-        #Compute accuracies
-        print(f" Testing bucket accuracy : {bucket_accuracy_train*100:.2f}%")
-        print(f" Validation bucket accuracy : {bucket_accuracy_validation*100:.2f}%")
-
-        if ((epoch + 10) % 30 == 0):
-            # Save model at the end of each epoch
+        print(f"Epoch {epoch+1}: train_loss={train_loss:.3f}, val_loss={val_loss:.3f} ")
+        bucket_accuracy = bucket_correct_train / bucket_total_train if bucket_total_train > 0 else 0
+        bucket_validation_accuracy = bucket_correct_validation / bucket_total_validation if bucket_total_validation > 0 else 0
+        if bucket_validation_accuracy > top_accuracy:
             os.makedirs("models", exist_ok=True)
-            # torch.save(model.state_dict(), f"models/age_cnn_epoch_{epoch+1}.pth")
+            torch.save(model.state_dict(), f"models/age_cnn_weighted_with_arg.pth")
+            top_accuracy = bucket_validation_accuracy
+        #Compute accuracies
+        print(f" Testing bucket accuracy : {bucket_accuracy*100:.2f}%")
+        print(f" Validation bucket accuracy : {bucket_validation_accuracy*100:.2f}%")
+
+
+        if ((epoch + 1) % 50 == 0):
+            # Save model at the end of each epoch
+            # os.makedirs("models", exist_ok=True)
+            # torch.save(model.state_dict(), f"models/age_weighted_cnn_epoch_{epoch+1}_{bucket_accuracy:.2f}.pth")
             plot_confusion_matrix(model,val_loader , device)
 
 
