@@ -5,115 +5,253 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as T
 import torchvision.models as models
+from torchvision.models import MobileNet_V3_Large_Weights
 from PIL import Image
 import numpy as np
 import math
 from Cnn import get_age_range
 
-MODEL_PATH = "models\\age_cnn_best_model.pth"  
+MODEL_PATH = "models\\mobilenet_v3_immagini_verticali\\age_cnn_best_model.pth"  
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
-mobilenet_v3_large = models.mobilenet_v3_large(pretrained=True)
+# Load models with optimizations
+weights = MobileNet_V3_Large_Weights.IMAGENET1K_V1
+
+# Age model
+mobilenet_v3_large = models.mobilenet_v3_large(weights=weights)
 mobilenet_v3_large.classifier[3] = nn.Linear(in_features=1280, out_features=8)
 model = mobilenet_v3_large.to(device)
-model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+model.load_state_dict(torch.load(MODEL_PATH, map_location=device, weights_only=False))
 model.eval()
 
+# Gender model
+GENDER_MODEL_PATH = "models\\mobile_net_gender_detection.pth"
+mobilenet_v3_large_gender = models.mobilenet_v3_large(weights=weights)
+mobilenet_v3_large_gender.classifier[3] = nn.Linear(in_features=1280, out_features=2)
+model_gender = mobilenet_v3_large_gender.to(device)
+model_gender.load_state_dict(torch.load(GENDER_MODEL_PATH, map_location=device, weights_only=False))
+model_gender.eval()
+
+# GPU optimizations
+if device.type == 'cuda':
+    # Enable cuDNN autotuner for faster convolutions
+    torch.backends.cudnn.benchmark = True
+    
+    # Compile models for faster inference (PyTorch 2.0+)
+    try:
+        model = torch.compile(model, mode='reduce-overhead')
+        model_gender = torch.compile(model_gender, mode='reduce-overhead')
+        print("Models compiled with torch.compile for faster inference")
+    except:
+        print("torch.compile not available, skipping compilation")
+    
+    # Enable TF32 for faster computation on Ampere+ GPUs
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+
+# Transform with normalization
 transform = T.Compose([
     T.Resize(224),
     T.ToTensor(),
     T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
+# MediaPipe setup
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_face_mesh = mp.solutions.face_mesh
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow logging
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+
+def preprocess_batch(crops):
+    """Batch preprocessing for multiple faces"""
+    tensors = []
+    for crop in crops:
+        img_pil = Image.fromarray(crop)
+        tensor = transform(img_pil)
+        tensors.append(tensor)
+    return torch.stack(tensors).to(device)
+
+
+def predict_batch(img_tensors):
+    """Batch prediction for better GPU utilization"""
+    with torch.no_grad():
+        # Age predictions
+        age_outputs = model(img_tensors)
+        age_classes = torch.argmax(age_outputs, dim=1)
+        
+        # Gender predictions
+        gender_outputs = model_gender(img_tensors)
+        gender_classes = torch.argmax(gender_outputs, dim=1)
+    
+    return age_classes, gender_classes
 
 
 def open_camera():
-    # Initialize the camera (0 is usually the default webcam)
+    """Open camera and detect age/gender in real-time with GPU optimization"""
     
     cap = cv2.VideoCapture(0)
     
     if not cap.isOpened():
         print("Error: Could not open camera.")
         return
-    with mp_face_mesh.FaceMesh(static_image_mode=True,max_num_faces=3,refine_landmarks=True,min_detection_confidence=0.5) as face_mesh:
+    
+    print("Camera opened. Press 'q' to quit.")
+    
+    # Pre-allocate CUDA memory by running a dummy forward pass
+    if device.type == 'cuda':
+        dummy_input = torch.randn(1, 3, 224, 224).to(device)
+        with torch.no_grad():
+            _ = model(dummy_input)
+            _ = model_gender(dummy_input)
+        print("GPU warmed up")
+    
+    # Frame counter for FPS calculation
+    frame_count = 0
+    import time
+    start_time = time.time()
+    
+    with mp_face_mesh.FaceMesh(
+        static_image_mode=False,
+        max_num_faces=3,
+        refine_landmarks=True,
+        min_detection_confidence=0.5
+    ) as face_mesh:
         while True:
-            # Read a frame from the camera
             ret, frame = cap.read()
             
             if not ret:
                 print("Error: Can't receive frame")
                 break
-                
             
-        # Convert the BGR image to RGB before processing
+            frame_count += 1
+            
+            # Convert BGR to RGB for MediaPipe
             results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            
             if not results.multi_face_landmarks:
+                # Calculate and display FPS
+                if frame_count % 30 == 0:
+                    elapsed = time.time() - start_time
+                    fps = frame_count / elapsed
+                    cv2.putText(frame, f"FPS: {fps:.1f}", (10, 30), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                
                 cv2.imshow('Camera Feed', frame)
-                print("No face landmarks found")
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
                 continue
+            
             h, w, _ = frame.shape
-            face_landmarks = results.multi_face_landmarks[0]
-
-            # Get landmark points for both eyes (approximate)
-            left_eye = face_landmarks.landmark[33]    # left eye outer corner
-            right_eye = face_landmarks.landmark[263]  # right eye outer corner
-
-            # Convert to pixel coords
-            left_eye = np.array([left_eye.x * w, left_eye.y * h])
-            right_eye = np.array([right_eye.x * w, right_eye.y * h])
-
-            # Compute the rotation angle
-            dx, dy = right_eye - left_eye
-            angle = math.degrees(math.atan2(dy, dx))
-
-            # Compute face center for rotation
-            center_x = int((left_eye[0] + right_eye[0]) / 2)
-            center_y = int((left_eye[1] + right_eye[1]) / 2)
-
-            # Rotate the image around the eyes' midpoint
-            rotation_matrix = cv2.getRotationMatrix2D((center_x, center_y), angle, 1.0)
-            rotated_image = cv2.warpAffine(frame, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC)
-            if rotated_image is not None:
-                cv2.imshow('Rotated Image', rotated_image)
-            # Recompute bounding box from landmarks
-            xs = [lm.x for lm in face_landmarks.landmark]
-            ys = [lm.y for lm in face_landmarks.landmark]
-            x_min = int(max(min(xs) * w, 0))
-            y_min = int(max(min(ys) * h, 0))
-            x_max = int(min(max(xs) * w, w))
-            y_max = int(min(max(ys) * h, h))
-
-            pad = 20
-            x_min = max(x_min - pad, 0)
-            y_min = max(y_min - pad, 0)
-            x_max = min(x_max + pad, w)
-            y_max = min(y_max + pad, h)
-
-            # Crop from the rotated image
-            rotated_crop = rotated_image[y_min:y_max, x_min:x_max]
-            cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-            # Prediction
-            img_tensor = transform(Image.fromarray(rotated_crop)).unsqueeze(0).to(device)
-            with torch.no_grad():
-                outputs = model(img_tensor)
-                predicted_class = torch.argmax(outputs, dim=1).item()
-                predicted_label = get_age_range(predicted_class)
-            cv2.putText(frame, f"Age: {predicted_label}", (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
-
-
-            # Display the frame
+            
+            # Process all detected faces in batch
+            crops = []
+            face_data = []
+            
+            for face_landmarks in results.multi_face_landmarks:
+                # Get eye landmarks
+                left_eye = face_landmarks.landmark[33]
+                right_eye = face_landmarks.landmark[263]
+                
+                # Convert to pixel coords
+                left_eye_px = np.array([left_eye.x * w, left_eye.y * h])
+                right_eye_px = np.array([right_eye.x * w, right_eye.y * h])
+                
+                # Compute rotation angle
+                dx, dy = right_eye_px - left_eye_px
+                angle = math.degrees(math.atan2(dy, dx))
+                
+                # Compute face center
+                center_x = int((left_eye_px[0] + right_eye_px[0]) / 2)
+                center_y = int((left_eye_px[1] + right_eye_px[1]) / 2)
+                
+                # Rotate image
+                rotation_matrix = cv2.getRotationMatrix2D((center_x, center_y), angle, 1.0)
+                rotated_frame = cv2.warpAffine(frame, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC)
+                
+                # Get bounding box
+                xs = [lm.x for lm in face_landmarks.landmark]
+                ys = [lm.y for lm in face_landmarks.landmark]
+                x_min = int(max(min(xs) * w, 0))
+                y_min = int(max(min(ys) * h, 0))
+                x_max = int(min(max(xs) * w, w))
+                y_max = int(min(max(ys) * h, h))
+                
+                # Add padding
+                pad = 20
+                x_min = max(x_min - pad, 0)
+                y_min = max(y_min - pad, 0)
+                x_max = min(x_max + pad, w)
+                y_max = min(y_max + pad, h)
+                
+                # Crop face
+                if y_max > y_min and x_max > x_min:
+                    rotated_crop = rotated_frame[y_min:y_max, x_min:x_max]
+                    crops.append(rotated_crop)
+                    face_data.append({
+                        'rotated_frame': rotated_frame,
+                        'bbox': (x_min, y_min, x_max, y_max)
+                    })
+            
+            # Batch prediction for all faces
+            if len(crops) > 0:
+                try:
+                    # Preprocess all crops at once
+                    img_tensors = preprocess_batch(crops)
+                    
+                    # Predict in batch
+                    age_classes, gender_classes = predict_batch(img_tensors)
+                    
+                    # Draw results on each face
+                    for i, data in enumerate(face_data):
+                        rotated_frame = data['rotated_frame']
+                        x_min, y_min, x_max, y_max = data['bbox']
+                        
+                        # Get predictions
+                        predicted_age_class = age_classes[i].item()
+                        predicted_label = get_age_range(predicted_age_class)
+                        
+                        predicted_gender_class = gender_classes[i].item()
+                        predicted_gender = "M" if predicted_gender_class == 0 else "F"
+                        
+                        # Draw rectangle and text
+                        cv2.rectangle(rotated_frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+                        text = f"Age: {predicted_label} | Gender: {predicted_gender}"
+                        cv2.putText(rotated_frame, text, 
+                                   (x_min, y_min - 10), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 
+                                   0.7, (36, 255, 12), 2)
+                        
+                        # Use the last processed frame for display
+                        frame = rotated_frame
+                        
+                except Exception as e:
+                    print(f"Prediction error: {e}")
+            
+            # Calculate and display FPS
+            if frame_count % 30 == 0:
+                elapsed = time.time() - start_time
+                fps = frame_count / elapsed
+                cv2.putText(frame, f"FPS: {fps:.1f}", (10, 30), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            
+            # Display frame
             cv2.imshow('Camera Feed', frame)
-            # Break the loop when 'q' is pressed
+            
+            # Break on 'q' key
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-        
-        # Release the camera and destroy windows
-        cap.release()
-        cv2.destroyAllWindows()
+    
+    # Cleanup
+    cap.release()
+    cv2.destroyAllWindows()
+    
+    # Print final stats
+    elapsed = time.time() - start_time
+    fps = frame_count / elapsed
+    print(f"Camera closed. Average FPS: {fps:.1f}")
+
 
 if __name__ == "__main__":
     open_camera()

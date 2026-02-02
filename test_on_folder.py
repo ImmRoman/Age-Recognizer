@@ -1,13 +1,13 @@
-from main import plot_confusion_matrix
+from database import save_confusion_matrix
 import torchvision.models as models
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split,Dataset
+from torch.utils.data import DataLoader
 from Cnn import *
 from database import *
 import torch
 
-FOLDER_PATH = "cropped_output"
-MODEL_PATH = "models\\age_cnn_best_model.pth"  
+FOLDER_PATH = "validation_cropped_faces"
+MODEL_PATH = "models\\mobile_net_best_98.pth"  
 
 if __name__ == "__main__":
     # Load MobileNetV3-Large pretrained on ImageNet
@@ -27,14 +27,13 @@ if __name__ == "__main__":
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
     dataset = AgeDataset(df, transform=transform)
-    # Load the dataset
-    dataset = torch.load("validation_dataset.pth",weights_only=False)
-
-    DL = DataLoader(dataset, batch_size = 512)
+    # Load the datase
+    dataset = torch.load("validation_dataset_mobile.pth", weights_only=False)
+    DL = DataLoader(dataset, batch_size=512)
 
 
 
     print("="*39)
     print("====   ELABORAZIONE INIZIATA   ====")
     print("="*39)
-    plot_confusion_matrix(model,DL,device)
+    save_confusion_matrix(model,DL,device)

@@ -70,7 +70,7 @@ def get_data_frame(image_dir):
                     continue
     return data
 
-def plot_confusion_matrix(model, dataloader, device):
+def save_confusion_matrix(model, dataloader, device):
     all_true = []
     all_pred = []
     model.eval()
@@ -96,5 +96,6 @@ def plot_confusion_matrix(model, dataloader, device):
     fontsize=12, ha='center', va='top', transform=plt.gca().transAxes
     )
     plt.title('Confusion Matrix (Validation)')
-    plt.show()
+    plt.savefig('confusion_matrix.png', bbox_inches='tight', dpi=100)
+    plt.close()
 

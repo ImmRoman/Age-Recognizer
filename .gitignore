@@ -4,3 +4,6 @@
 /cropped_faces
 /validation_cropped_faces
 /cropped_output
+/models
+/plots
+/venv
