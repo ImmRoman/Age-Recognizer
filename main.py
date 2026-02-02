@@ -15,10 +15,10 @@ from collections import defaultdict
 from Cnn import *
 from database import *
 DATABASE_PATH = "validation_cropped_faces" 
+EPOCHS = 300 
+top_accuracy = 0
 
 # --- Main Execution ---
-
-top_accuracy = 0
 
 # Setup MobileNet
 mobilenet_v3_large = models.mobilenet_v3_large(pretrained=True)
@@ -37,11 +37,6 @@ mobilenet_v3_large.classifier = nn.Sequential(
     nn.Linear(512, 8)
 )
 
-# Freeze backbone
-for name, param in mobilenet_v3_large.named_parameters():
-    if "classifier" not in name:
-        param.requires_grad = False
-
 # Initialize weights
 for m in mobilenet_v3_large.classifier.modules():
     if isinstance(m, nn.Linear):
@@ -56,8 +51,6 @@ torch.manual_seed(seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed_all(seed)
 torch.backends.cudnn.benchmark = True
-
-print(f"Transfer learning setup: frozen backbone, trainable params = {sum(p.numel() for p in mobilenet_v3_large.parameters() if p.requires_grad)}")
 
 # Load Data
 print(f"Looking for data in: {os.path.abspath(DATABASE_PATH)}")
@@ -100,8 +93,6 @@ else:
     print("="*29)
     print("====   START TRAINING   ====")
     print("="*29)
-    # Training Loop (Reduced epochs for testing, change 1200 back if needed)
-    EPOCHS = 300 
     
     for epoch in range(EPOCHS):
         model.train()

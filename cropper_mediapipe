@@ -56,32 +56,3 @@ with mp_face_mesh.FaceMesh(
             # Save cropped image
             cropped_path = os.path.join(OUTPUT_DIR, f"{filename}_cpy.png")
             cv2.imwrite(cropped_path, cropped_face)
-            # print(f"Saved cropped face to: {cropped_path}")
-
-            # # (Optional) Draw landmarks for visualization
-            # annotated_image = image.copy()
-            # mp_drawing.draw_landmarks(
-            #     image=annotated_image,
-            #     landmark_list=face_landmarks,
-            #     connections=mp_face_mesh.FACEMESH_TESSELATION,
-            #     landmark_drawing_spec=None,
-            #     connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_tesselation_style()
-            # )
-            # mp_drawing.draw_landmarks(
-            #     image=annotated_image,
-            #     landmark_list=face_landmarks,
-            #     connections=mp_face_mesh.FACEMESH_CONTOURS,
-            #     landmark_drawing_spec=None,
-            #     connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_contours_style()
-            # )
-            # mp_drawing.draw_landmarks(
-            #     image=annotated_image,
-            #     landmark_list=face_landmarks,
-            #     connections=mp_face_mesh.FACEMESH_IRISES,
-            #     landmark_drawing_spec=None,
-            #     connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_iris_connections_style()
-            # )
-
-            # annotated_path = os.path.join(OUTPUT_DIR, f"annotated_{idx}.png")
-            # cv2.imwrite(annotated_path, annotated_image)
-            # print(f"Saved annotated image to: {annotated_path}")
