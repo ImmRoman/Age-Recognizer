@@ -31,9 +31,6 @@ for m in mobilenet_v3_large.classifier.modules():
 if _in_features is None: _in_features = 1024
 
 mobilenet_v3_large.classifier = nn.Sequential(
-    nn.Linear(_in_features, 512),
-    nn.ReLU(inplace=True),
-    nn.Dropout(p=0.4),
     nn.Linear(512, 8)
 )
 
