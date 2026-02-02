@@ -14,7 +14,7 @@ from collections import defaultdict
 
 from Cnn import *
 from database import *
-DATABASE_PATH = "validation_cropped_faces" 
+DATABASE_PATH = "cropped_output" 
 EPOCHS = 300 
 top_accuracy = 0
 
@@ -33,12 +33,6 @@ if _in_features is None: _in_features = 1024
 mobilenet_v3_large.classifier = nn.Sequential(
     nn.Linear(512, 8)
 )
-
-# Initialize weights
-for m in mobilenet_v3_large.classifier.modules():
-    if isinstance(m, nn.Linear):
-        nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
-        if m.bias is not None: nn.init.constant_(m.bias, 0.0)
 
 # Reproducibility
 seed = 42

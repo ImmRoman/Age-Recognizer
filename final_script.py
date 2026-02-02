@@ -12,6 +12,8 @@ import math
 from Cnn import get_age_range
 
 MODEL_PATH = "models\\mobilenet_v3_immagini_verticali\\age_cnn_best_model.pth"  
+GENDER_MODEL_PATH = "models\\mobile_net_gender_detection.pth"
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
@@ -26,7 +28,6 @@ model.load_state_dict(torch.load(MODEL_PATH, map_location=device, weights_only=F
 model.eval()
 
 # Gender model
-GENDER_MODEL_PATH = "models\\mobile_net_gender_detection.pth"
 mobilenet_v3_large_gender = models.mobilenet_v3_large(weights=weights)
 mobilenet_v3_large_gender.classifier[3] = nn.Linear(in_features=1280, out_features=2)
 model_gender = mobilenet_v3_large_gender.to(device)
