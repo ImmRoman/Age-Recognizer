@@ -144,5 +144,5 @@ if __name__ == "__main__":
             os.makedirs("models", exist_ok=True)
             torch.save(model.state_dict(), "models/mobile_net_gender_detection.pth")
             top_accuracy = val_acc
-            plot_confusion_matrix(model, val_loader, device)
+            save_confusion_matrix(model, val_loader, device)
 
