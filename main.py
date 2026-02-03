@@ -59,7 +59,7 @@ if __name__ == "__main__":
     class_weights = class_counts.sum() / (len(class_counts) * class_counts)
     class_weights = class_weights.to(device)
 
-    criterion = nn.CrossEntropyLoss(weight=class_weights)   
+    criterion = nn.BCEWithLogitsLoss(weight=class_weights)
 
     lr = 0.001
     optimizer = optim.Adam(model.parameters(), lr=lr)
