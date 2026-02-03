@@ -17,19 +17,15 @@ GENDER_MODEL_PATH = "models\\Genere\\MovileNetV2_weight0.5\\mobilev2_weight.pth"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-# Load models with optimizations
-weights = MobileNet_V3_Large_Weights.IMAGENET1K_V1
-
-# ---------------------------------------------------------
-# 1. AGE MODEL (Unchanged)
-# ---------------------------------------------------------
-mobilenet_v3_large = models.mobilenet_v3_large(weights=weights)
+# Age Model
+mobilenet_v3_large = models.mobilenet_v3_large(weights=None)
 mobilenet_v3_large.classifier = nn.Sequential(
     nn.Linear(960, 512),
     nn.ReLU(inplace=True),
     nn.Dropout(p=0.4),
     nn.Linear(512, 8)
 )
+# Gender Model
 model = mobilenet_v3_large.to(device)
 model.load_state_dict(torch.load(AGE_MODEL_PATH, map_location=device, weights_only=False))
 model.eval()
@@ -45,19 +41,6 @@ mobilenet_v2_gender.classifier = nn.Sequential(
 model_gender = mobilenet_v2_gender.to(device)
 model_gender.load_state_dict(torch.load(GENDER_MODEL_PATH, map_location=device, weights_only=False))
 model_gender.eval()
-
-# GPU optimizations
-if device.type == 'cuda':
-    torch.backends.cudnn.benchmark = True
-    try:
-        model = torch.compile(model, mode='reduce-overhead')
-        model_gender = torch.compile(model_gender, mode='reduce-overhead')
-        print("Models compiled with torch.compile for faster inference")
-    except:
-        print("torch.compile not available, skipping compilation")
-    
-    torch.backends.cuda.matmul.allow_tf32 = True
-    torch.backends.cudnn.allow_tf32 = True
 
 # Transform with normalization
 transform = T.Compose([
@@ -235,13 +218,6 @@ def open_camera():
                         
                 except Exception as e:
                     print(f"Prediction error: {e}")
-            
-            # Calculate and display FPS
-            if frame_count % 30 == 0:
-                elapsed = time.time() - start_time
-                fps = frame_count / elapsed
-                cv2.putText(frame, f"FPS: {fps:.1f}", (10, 30), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             
             # Display frame
             cv2.imshow('Camera Feed', frame)
