@@ -67,11 +67,11 @@ else:
     print(f"Training on device: {device}")
     
     model = mobilenet_v3_large.to(device)
-    criterion = nn.CrossEntropyLoss()
     
 
     lr = 0.01 
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4)
+    criterion = nn.CrossEntropyLoss()
 
     print("="*29)
     print("====   START TRAINING   ====")
