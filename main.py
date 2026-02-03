@@ -15,29 +15,18 @@ import torchvision.models as models
 DATABASE_PATH = "cropped_output"
 
 from Cnn import *
-from database import *    # Contains GenderDataset + get_data_frame()
+from database import *    
 
 top_accuracy = 0
 
 if __name__ == "__main__":
 
-    # ------------------------------------------
-    # MODEL SETUP
-    # ------------------------------------------
 
-    # Load MobileNetV3-Large pretrained on ImageNet
     mobilenet_v3_large = models.mobilenet_v3_large(pretrained=True)
 
-    # CHANGE final classifier layer: output 2 classes (male/female)
-    mobilenet_v3_large.classifier[3] = nn.Linear(in_features=1280, out_features=2)   # <<< CHANGED
+    mobilenet_v3_large.classifier[3] = nn.Linear(in_features=1280, out_features=2)   
 
-
-    # ------------------------------------------
-    # DATASET
-    # ------------------------------------------
-
-    # Change column name from `age` → `gender`
-    df = pd.DataFrame(get_data_frame(DATABASE_PATH), columns=['filepath', 'gender'])  # <<< CHANGED
+    df = pd.DataFrame(get_data_frame(DATABASE_PATH), columns=['filepath', 'gender']) 
 
     transform = T.Compose([
         T.Resize(224),
@@ -45,13 +34,9 @@ if __name__ == "__main__":
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    # Use GenderDataset instead of AgeDataset
-    dataset = GenderDataset(df, transform=transform)   # <<< CHANGED
+    dataset = GenderDataset(df, transform=transform)   
 
 
-    # ------------------------------------------
-    # TRAIN/VAL SPLIT
-    # ------------------------------------------
 
     n_train = int(0.8 * len(dataset))
     n_val = len(dataset) - n_train
@@ -61,9 +46,6 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_ds, batch_size=64)
 
 
-    # ------------------------------------------
-    # TRAINING SETUP
-    # ------------------------------------------
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device == "cpu":
@@ -72,22 +54,17 @@ if __name__ == "__main__":
 
     model = mobilenet_v3_large.to(device)
 
-    # Gender imbalance: UTKFace roughly 60% male, 40% female
-    # You can use class weights OR remove balancing entirely.
-    class_counts = torch.tensor([1, 1], dtype=torch.float)  # <<< CHANGED (no age buckets)
+ 
+    class_counts = torch.tensor([1, 1], dtype=torch.float)  
     class_weights = class_counts.sum() / (len(class_counts) * class_counts)
     class_weights = class_weights.to(device)
 
-    # Loss: 2-class classification
-    criterion = nn.CrossEntropyLoss(weight=class_weights)   # <<< CHANGED
+    criterion = nn.CrossEntropyLoss(weight=class_weights)   
 
     lr = 0.001
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
 
-    # ------------------------------------------
-    # TRAINING LOOP
-    # ------------------------------------------
 
     print("=" * 39)
     print("====   START TRAINING (GENDER)   ====")
