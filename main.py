@@ -22,14 +22,6 @@ top_accuracy = 0
 
 # Setup MobileNet
 mobilenet_v3_large = models.mobilenet_v3_large(pretrained=True)
-# Adjust classifier for 8 classes
-_in_features = None
-for m in mobilenet_v3_large.classifier.modules():
-    if isinstance(m, nn.Linear):
-        _in_features = m.in_features
-        break
-if _in_features is None: _in_features = 1024
-
 mobilenet_v3_large.classifier = nn.Sequential(
     nn.Linear(512, 8)
 )

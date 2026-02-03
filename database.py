@@ -55,18 +55,13 @@ def get_data_frame(image_dir):
     filenames = os.listdir(image_dir)
     for filename in filenames:
         contatore += 1
-        # if(contatore % 5 != 0):
-        #     continue
-        #Ensure it's a valid image file
         if filename.endswith('.png') or filename.endswith('.jpg'):
-            # Split the filename by underscore to get the age
             parts = filename.split('_')
             if len(parts) > 0:
                 try:
                     age = int(parts[0])
                     data.append([os.path.join(image_dir, filename), get_age_bucket(age)])
                 except ValueError:
-                    # Skip files where the age part is not a number
                     continue
     return data
 
