@@ -11,8 +11,8 @@ import numpy as np
 import math
 from Cnn import get_age_range
 
-MODEL_PATH = "models\\mobilenet_v3_immagini_verticali\\age_cnn_best_model.pth"  
-GENDER_MODEL_PATH = "models\\mobile_net_gender_detection.pth"
+AGE_MODEL_PATH = "models\\Eta\\MobileNetV3\\normal\\mobile_net_best.pth"  
+GENDER_MODEL_PATH = "models\\Genere\\MovileNetV2_weight0.5\\mobilev2_weight.pth"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
@@ -20,26 +20,35 @@ print(f"Using device: {device}")
 # Load models with optimizations
 weights = MobileNet_V3_Large_Weights.IMAGENET1K_V1
 
-# Age model
+# ---------------------------------------------------------
+# 1. AGE MODEL (Unchanged)
+# ---------------------------------------------------------
 mobilenet_v3_large = models.mobilenet_v3_large(weights=weights)
-mobilenet_v3_large.classifier[3] = nn.Linear(in_features=1280, out_features=8)
+mobilenet_v3_large.classifier = nn.Sequential(
+    nn.Linear(960, 512),
+    nn.ReLU(inplace=True),
+    nn.Dropout(p=0.4),
+    nn.Linear(512, 8)
+)
 model = mobilenet_v3_large.to(device)
-model.load_state_dict(torch.load(MODEL_PATH, map_location=device, weights_only=False))
+model.load_state_dict(torch.load(AGE_MODEL_PATH, map_location=device, weights_only=False))
 model.eval()
 
-# Gender model
-mobilenet_v3_large_gender = models.mobilenet_v3_large(weights=weights)
-mobilenet_v3_large_gender.classifier[3] = nn.Linear(in_features=1280, out_features=2)
-model_gender = mobilenet_v3_large_gender.to(device)
+mobilenet_v2_gender = models.mobilenet_v2(weights=None, width_mult=0.5)
+in_features_gender = mobilenet_v2_gender.classifier[1].in_features
+
+mobilenet_v2_gender.classifier = nn.Sequential(
+    nn.Dropout(p=0.2, inplace=True),
+    nn.Linear(in_features_gender, 1) 
+)
+
+model_gender = mobilenet_v2_gender.to(device)
 model_gender.load_state_dict(torch.load(GENDER_MODEL_PATH, map_location=device, weights_only=False))
 model_gender.eval()
 
 # GPU optimizations
 if device.type == 'cuda':
-    # Enable cuDNN autotuner for faster convolutions
     torch.backends.cudnn.benchmark = True
-    
-    # Compile models for faster inference (PyTorch 2.0+)
     try:
         model = torch.compile(model, mode='reduce-overhead')
         model_gender = torch.compile(model_gender, mode='reduce-overhead')
@@ -47,7 +56,6 @@ if device.type == 'cuda':
     except:
         print("torch.compile not available, skipping compilation")
     
-    # Enable TF32 for faster computation on Ampere+ GPUs
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
 
@@ -81,10 +89,10 @@ def predict_batch(img_tensors):
         # Age predictions
         age_outputs = model(img_tensors)
         age_classes = torch.argmax(age_outputs, dim=1)
-        
-        # Gender predictions
+
         gender_outputs = model_gender(img_tensors)
-        gender_classes = torch.argmax(gender_outputs, dim=1)
+        gender_probs = torch.sigmoid(gender_outputs)
+        gender_classes = (gender_probs > 0.5).long().squeeze(1)
     
     return age_classes, gender_classes
 
@@ -100,7 +108,7 @@ def open_camera():
     
     print("Camera opened. Press 'q' to quit.")
     
-    # Pre-allocate CUDA memory by running a dummy forward pass
+    # Pre-allocate CUDA memory
     if device.type == 'cuda':
         dummy_input = torch.randn(1, 3, 224, 224).to(device)
         with torch.no_grad():
@@ -108,7 +116,7 @@ def open_camera():
             _ = model_gender(dummy_input)
         print("GPU warmed up")
     
-    # Frame counter for FPS calculation
+    # Frame counter
     frame_count = 0
     import time
     start_time = time.time()
@@ -132,7 +140,6 @@ def open_camera():
             results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             
             if not results.multi_face_landmarks:
-                # Calculate and display FPS
                 if frame_count % 30 == 0:
                     elapsed = time.time() - start_time
                     fps = frame_count / elapsed
@@ -146,7 +153,6 @@ def open_camera():
             
             h, w, _ = frame.shape
             
-            # Process all detected faces in batch
             crops = []
             face_data = []
             
@@ -240,15 +246,12 @@ def open_camera():
             # Display frame
             cv2.imshow('Camera Feed', frame)
             
-            # Break on 'q' key
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
     
-    # Cleanup
     cap.release()
     cv2.destroyAllWindows()
     
-    # Print final stats
     elapsed = time.time() - start_time
     fps = frame_count / elapsed
     print(f"Camera closed. Average FPS: {fps:.1f}")
