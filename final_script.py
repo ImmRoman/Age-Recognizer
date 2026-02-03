@@ -91,14 +91,6 @@ def open_camera():
     
     print("Camera opened. Press 'q' to quit.")
     
-    # Pre-allocate CUDA memory
-    if device.type == 'cuda':
-        dummy_input = torch.randn(1, 3, 224, 224).to(device)
-        with torch.no_grad():
-            _ = model(dummy_input)
-            _ = model_gender(dummy_input)
-        print("GPU warmed up")
-    
     # Frame counter
     frame_count = 0
     import time
