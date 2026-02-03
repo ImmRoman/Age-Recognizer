@@ -115,12 +115,6 @@ def open_camera():
             results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             
             if not results.multi_face_landmarks:
-                if frame_count % 30 == 0:
-                    elapsed = time.time() - start_time
-                    fps = frame_count / elapsed
-                    cv2.putText(frame, f"FPS: {fps:.1f}", (10, 30), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                
                 cv2.imshow('Camera Feed', frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
